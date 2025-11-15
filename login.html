@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đăng nhập</title>
+
+<style>
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+        font-family:"Segoe UI", sans-serif;
+    }
+
+    body{
+        height:100vh;
+        background: linear-gradient(135deg, #1fa2ff, #12d8fa, #a6ffcb);
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        padding:20px;
+    }
+
+    .login-box{
+        width:100%;
+        max-width: 380px;
+        background:rgba(255,255,255,0.25);
+        backdrop-filter: blur(14px);
+        padding:25px;
+        border-radius:20px;
+        box-shadow:0 8px 25px rgba(0,0,0,0.25);
+        animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+        from { transform:translateY(30px); opacity:0; }
+        to { transform:translateY(0); opacity:1; }
+    }
+
+    h2{
+        text-align:center;
+        color:white;
+        margin-bottom:25px;
+        font-size:28px;
+        text-shadow:0 2px 3px rgba(0,0,0,0.4);
+    }
+
+    .input-box{
+        margin-bottom:20px;
+    }
+
+    .input-box label{
+        color:white;
+        font-size:15px;
+        font-weight:500;
+    }
+
+    .input-box input{
+        width:100%;
+        padding:14px 15px;
+        margin-top:6px;
+        border:none;
+        outline:none;
+        border-radius:12px;
+        font-size:17px;
+        background:rgba(255,255,255,0.95);
+        transition:0.2s;
+    }
+
+    .input-box input:focus{
+        box-shadow:0 0 12px rgba(255,255,255,0.8);
+        transform:scale(1.02);
+    }
+
+    #loginBtn{
+        width:100%;
+        padding:14px;
+        border:none;
+        border-radius:12px;
+        font-size:18px;
+        margin-top:5px;
+        cursor:pointer;
+        background:#0066ff;
+        color:white;
+        font-weight:bold;
+        letter-spacing:0.5px;
+        transition:0.25s;
+    }
+
+    #loginBtn:hover{
+        background:#0051cc;
+        transform:scale(1.03);
+    }
+
+    #loginBtn:active{
+        transform:scale(0.97);
+    }
+
+    #loading{
+        display:none;
+        margin-top:12px;
+        text-align:center;
+        color:white;
+        font-size:16px;
+    }
+
+    @media (max-width:480px) {
+        h2{ font-size:24px; }
+        #loginBtn { font-size:17px; padding:13px; }
+        .input-box input { font-size:16px; padding:13px; }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+    <h2>Đăng Nhập</h2>
+
+    <div class="input-box">
+        <label>Tên đăng nhập</label>
+        <input type="text" id="username" placeholder="Nhập username...">
+    </div>
+
+    <div class="input-box">
+        <label>Mật khẩu</label>
+        <input type="password" id="password" placeholder="Nhập mật khẩu...">
+    </div>
+
+    <button id="loginBtn">Đăng nhập</button>
+
+    <div id="loading">🔄 Đang xử lý...</div>
+</div>
+
+
+<script>
+const API_URL = "http://localhost:3000/api/accounts/login";
+
+document.getElementById("loginBtn").onclick = async () => {
+    const user = username.value.trim();
+    const pass = password.value.trim();
+
+    if (!user || !pass) {
+        alert("Vui lòng nhập đầy đủ!");
+        return;
+    }
+
+    loginBtn.disabled = true;
+    loading.style.display = "block";
+
+    try {
+        let r = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+
+        let d = await r.json();
+
+        if (!r.ok) {
+            alert(d.message || "Sai tài khoản hoặc mật khẩu!");
+        } else {
+            localStorage.setItem("token", d.token);
+            localStorage.setItem("userId", d.account.id);
+
+            // chuyển sang trang chat
+            window.location.href = "chat.html";
+        }
+    }
+    catch (err) {
+        alert("Không thể kết nối server!");
+    }
+
+    loginBtn.disabled = false;
+    loading.style.display = "none";
+};
+</script>
+
+</body>
+</html>

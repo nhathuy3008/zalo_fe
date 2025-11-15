@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Zalo Chat Full</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<style>
+/* ======================
+       CSS FULL
+       
+====================== */
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+    background: #f5f5f5;
+}
+
+/* ==== SIDEBAR ==== */
+#sidebar {
+    width: 260px;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+#sidebar h3 {
+    padding: 15px;
+    margin: 0;
+    background: #57a9ff;
+    color: white;
+    text-align: center;
+}
+
+#roomList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.room-item {
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 6px;
+}
+.room-item:hover { background: #eef5ff; }
+.room-active { background: #d9ecff !important; }
+
+/* ==== CHAT AREA ==== */
+#chatArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#chatHeader {
+    background: #57a9ff;
+    color: white;
+    padding: 15px;
+    font-size: 18px;
+}
+
+/* messages */
+#messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.msg-box {
+    margin-bottom: 15px;
+    display: flex;
+    position: relative;
+}
+
+.msg-me { justify-content: flex-end; }
+.msg-other { justify-content: flex-start; }
+
+.bubble {
+    max-width: 67%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 15px;
+    word-break: break-word;
+}
+.bubble-me { background: #d1ffd6; }
+.bubble-other { background: #fff; border: 1px solid #eee; }
+
+/* Name */
+.sender-name {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 4px;
+}
+
+/* Reaction */
+.reaction-box {
+    display: flex;
+    gap: 5px;
+    margin-top: 4px;
+}
+.reaction-item {
+    background: #eee;
+    padding: 3px 6px;
+    border-radius: 12px;
+    font-size: 13px;
+}
+
+/* Reaction menu */
+.reaction-menu {
+    position: absolute;
+    display: flex;
+    gap: 8px;
+    background: white;
+    padding: 7px 10px;
+    border-radius: 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    z-index: 9999;
+}
+.reaction-menu span { font-size: 22px; cursor: pointer; }
+
+/* Input */
+#inputArea {
+    display: flex;
+    padding: 10px;
+    background: #fff;
+    border-top: 1px solid #ddd;
+    gap: 10px;
+    align-items: center;
+}
+
+#messageInput {
+    flex: 1;
+    padding: 10px;
+    border-radius: 25px;
+    border: 1px solid #ccc;
+}
+#sendBtn {
+    padding: 10px 18px;
+    border: none;
+    background: #57a9ff;
+    color: white;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+/* Buttons */
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 20px;
+    border: none;
+    cursor: pointer;
+    color: white;
+}
+#cameraBtn { background: #57a9ff; }
+#videoBtn { background: #ff5252; }
+#stickerBtn { background: #ffd630; color: black; }
+#fileBtn { background: #9c27b0; }
+
+/* Viewer */
+#imageViewer {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+}
+#viewerImg {
+    max-width: 90%;
+    max-height: 90%;
+}
+
+/* Camera modal */
+/* CAMERA FULLSCREEN */
+.camera-modal {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:black;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:99999;
+}
+
+#cameraPreview {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    position:absolute;
+    top:0; left:0;
+}
+
+/* NÚT TRÒN CHỤP / QUAY */
+.capture-btn {
+    width:80px;
+    height:80px;
+    background:white;
+    border-radius:50%;
+    border:4px solid rgba(255,255,255,0.5);
+    position:absolute;
+    bottom:40px;
+    cursor:pointer;
+}
+
+/* Khi quay video – nút thành màu đỏ */
+.capture-btn.recording {
+    background:red;
+    transform:scale(0.85);
+}
+
+/* Thanh tiến trình video */
+#recordProgress {
+    position:absolute;
+    bottom:130px;
+    height:5px;
+    width:0%;
+    background:red;
+    border-radius:5px;
+    transition:width linear;
+}
+
+#editorModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    backdrop-filter: blur(6px);
+}
+
+#editorBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(30, 30, 30, 0.6);
+    padding: 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+#editorCanvas {
+    max-width: 90vw;
+    max-height: 60vh;
+    border-radius: 10px;
+    border: 2px solid #fff;
+    margin-bottom: 12px;
+}
+
+#editorText {
+    width: 90%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    margin-bottom: 12px;
+    font-size: 16px;
+    outline: none;
+}
+
+.toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.toolbar button {
+    padding: 8px 15px;
+    font-size: 15px;
+    border: none;
+    border-radius: 8px;
+    background: #2e89ff;
+    color: white;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.toolbar button:hover {
+    opacity: 0.85;
+}
+
+.cancel {
+    background: #777 !important;
+}
+
+.send {
+    background: #28c76f !important;
+}
+
+
+/* Reply bar */
+#replyBar {
+    background: #eef;
+    padding: 8px;
+    margin: 5px;
+    border-left: 4px solid #57a9ff;
+    display: none;
+}
+
+/* Sticker panel */
+#stickerPanel {
+    position: fixed;
+    bottom: 85px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    height: 260px;
+    background: white;
+    border-radius: 10px;
+    overflow-y: auto;
+    display: none;
+    padding: 8px;
+    z-index: 99999;
+}
+.sticker-item {
+    width: 60px;
+    height: 60px;
+    margin: 6px;
+    display: inline-block;
+    cursor: pointer;
+    border-radius: 8px;
+}
+#searchResult {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.search-item {
+    padding: 10px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.search-item:hover {
+    background: #e6f0ff;
+}
+
+
+</style>
+</head>
+<body>
+
+<!-- ====================================
+        SIDEBAR
+==================================== -->
+<div id="sidebar">
+    <h3>Danh sách phòng</h3>
+
+    <!-- Ô tìm kiếm user -->
+    <input id="searchUserInput"
+        placeholder="🔍 Tìm kiếm người dùng..."
+        style="margin:10px;border:1px solid #ccc;padding:8px;border-radius:6px;width:90%;">
+
+    <!-- kết quả tìm kiếm -->
+    <div id="searchResult"
+        style="
+            max-height:180px;
+            overflow-y:auto;
+            margin:10px;
+            border-radius:8px;
+        ">
+    </div>
+
+    <!-- Danh sách phòng -->
+    <div id="roomList" style="flex:1;overflow-y:auto;padding:10px;"></div>
+
+    <!-- Nút tạo phòng -->
+    <button id="createRoomBtn"
+        style="margin:10px;border:none;background:#4CAF50;color:white;padding:10px;border-radius:6px;cursor:pointer;">
+        ➕ Tạo phòng
+    </button>
+
+    <!-- Nút admin -->
+    <button id="adminBtn"
+        style="margin:10px;border:none;background:#ff5722;color:white;padding:10px;border-radius:6px;cursor:pointer;display:none;">
+        ⚙️ Quản lý Admin
+    </button>
+</div>
+
+
+
+
+<!-- ====================================
+        CHAT AREA
+==================================== -->
+<div id="chatArea">
+
+    <div id="chatHeader">Chọn phòng để chat</div>
+
+    <div id="replyBar"></div>
+
+    <div id="messages"></div>
+
+    <!-- INPUT -->
+    <div id="inputArea">
+        <button class="action-btn" id="cameraBtn">📷</button>
+        <button class="action-btn" id="stickerBtn">😀</button>
+
+        <input type="file" id="fileInput" hidden>
+        <button class="action-btn" id="fileBtn">📁</button>
+
+        <input id="messageInput" placeholder="Nhập tin...">
+
+        <button id="sendBtn">Gửi</button>
+    </div>
+</div>
+
+<!-- ====================================
+        VIEWER
+==================================== -->
+<div id="imageViewer">
+    <img id="viewerImg">
+</div>
+
+<!-- ====================================
+        CAMERA
+==================================== -->
+<!-- CAMERA MODAL ZALO STYLE -->
+<div id="cameraModal" class="camera-modal">
+    <video id="cameraPreview" autoplay playsinline></video>
+
+    <!-- nút tròn -->
+    <div id="captureButton" class="capture-btn"></div>
+
+    <!-- thanh thời gian khi quay -->
+    <div id="recordProgress"></div>
+    <div id="closeCameraBtn"
+     style="
+        position:absolute;top:20px;left:20px;
+        background:rgba(0,0,0,0.5);color:white;
+        padding:8px 12px;border-radius:8px;
+        font-size:18px;cursor:pointer;">
+    ✖
+</div>
+
+<!-- Nút đổi camera -->
+<div id="switchCameraBtn"
+     style="
+        position:absolute;top:20px;right:20px;
+        background:rgba(0,0,0,0.5);color:white;
+        padding:8px 12px;border-radius:8px;
+        font-size:18px;cursor:pointer;">
+    🔄
+</div>
+    
+</div>
+
+
+<!-- ====================================
+        EDITOR CANVAS
+==================================== -->
+<div id="editorModal">
+    <div id="editorBox">
+        <canvas id="editorCanvas"></canvas>
+
+        <input id="editorText" placeholder="Nhập chữ..." />
+
+        <div class="toolbar">
+            <button id="fontDown">A−</button>
+            <button id="fontUp">A+</button>
+            <input type="color" id="colorPick" value="#ffffff">
+        </div>
+
+        <div class="toolbar">
+            <button class="cancel" id="cancelEdit">Huỷ</button>
+            <button class="send" id="sendEdit">Gửi</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ====================================
+        STICKER
+==================================== -->
+<div id="stickerPanel"></div>
+
+<script>
+/* =============================== 
+      JS FULL FINAL VERSION 
+=============================== */
+
+const API_URL = "http://localhost:3000";
+
+let socket = null;
+let token = localStorage.getItem("token");
+let userId = localStorage.getItem("userId");
+// ==== GIẢI MÃ JWT ĐỂ LẤY ROLE TRỰC TIẾP ====
+function decodeJWT(token) {
+    try {
+        const payload = token.split('.')[1];
+        return JSON.parse(atob(payload)); // GIẢI MÃ JWT
+    } catch (e) {
+        return null;
+    }
+}
+
+let decoded = decodeJWT(token);
+let userRole = decoded?.role;   // ← LẤY ROLE TỪ JWT CHUẨN
+
+console.log("ROLE GIẢI MÃ JWT:", userRole);
+
+
+let currentRoom = null;
+let replyTarget = null;
+
+/******************************************************
+ * CHECK LOGIN
+ ******************************************************/
+if (!token || !userId) {
+    alert("Chưa đăng nhập!");
+    location.href = "login.html";
+}
+if (userRole === "admin") {
+    adminBtn.style.display = "block";
+} else {
+    adminBtn.style.display = "none";
+}
+
+socket = io(API_URL);
+
+/******************************************************
+ * LOAD ROOM LIST
+ ******************************************************/
+async function loadRooms() {
+    let res = await fetch(`${API_URL}/api/rooms/my-rooms`, {
+        headers: { Authorization: "Bearer " + token }
+    });
+
+    let data = await res.json();
+
+    roomList.innerHTML = "";
+
+    data.rooms.forEach(r => {
+        let div = document.createElement("div");
+        div.className = "room-item";
+
+        div.innerText =
+            r.type === "private"
+                ? r.members.find(m => m._id !== userId)?.fullName
+                : r.name;
+
+        div.onclick = () => openRoom(r);
+
+        roomList.appendChild(div);
+    });
+}
+
+loadRooms();
+
+/******************************************************
+ * OPEN ROOM
+ ******************************************************/
+async function openRoom(room) {
+    currentRoom = room;
+
+    chatHeader.innerText =
+        room.type === "private"
+            ? room.members.find(m => m._id !== userId)?.fullName
+            : room.name;
+
+    messages.innerHTML = "";
+    replyBar.style.display = "none";
+
+    socket.emit("join_room", room._id);
+
+    let res = await fetch(`${API_URL}/api/messages/${room._id}`, {
+        headers: { Authorization: "Bearer " + token }
+    });
+
+    let data = await res.json();
+
+    data.messages.forEach(m => addMessage(m));
+}
+
+/******************************************************
+ * SOCKET EVENTS
+ ******************************************************/
+socket.on("new_message", msg => {
+    if (msg.roomId === currentRoom?._id) addMessage(msg);
+});
+
+socket.on("message_reacted", dt => {
+    let box = document.querySelector(`.msg-box[data-id="${dt.messageId}"]`);
+    if (!box) return;
+    renderReactions(dt.reactions, box.querySelector(".reaction-box"));
+});
+
+/******************************************************
+ * SEND TEXT
+ ******************************************************/
+sendBtn.onclick = () => {
+    let text = messageInput.value.trim();
+    if (!text || !currentRoom) return;
+
+    socket.emit("send_message", {
+        roomId: currentRoom._id,
+        sender: userId,
+        text,
+        replyTo: replyTarget?._id || null
+    });
+
+    messageInput.value = "";
+    replyTarget = null;
+    replyBar.style.display = "none";
+};
+
+/******************************************************
+ * FILE SEND
+ ******************************************************/
+fileBtn.onclick = () => fileInput.click();
+
+fileInput.onchange = async () => {
+    let f = fileInput.files[0];
+    if (!f) return;
+
+    let form = new FormData();
+    form.append("file", f);
+
+    let res = await fetch(`${API_URL}/api/messages/upload`, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        body: form
+    });
+
+    let data = await res.json();
+
+    socket.emit("send_message", {
+        roomId: currentRoom._id,
+        sender: userId,
+        file: data.url,
+        fileType: data.fileType,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        replyTo: replyTarget?._id || null
+    });
+};
+
+/******************************************************
+ * CAMERA SYSTEM
+ ******************************************************/
+/***********************************************************
+ *  CAMERA — TAP = PHOTO | HOLD = VIDEO (30s)
+ ***********************************************************/
+/***********************************************************
+ * CAMERA ZALO – TAP = PHOTO | HOLD = VIDEO
+ ***********************************************************/
+let cameraStream = null;
+let usingFront = true;     // ← mặt định camera trước
+let mediaRecorder = null;
+let chunks = [];
+let pressTimer = null;
+let isRecording = false;
+let previewBlob = null;
+let previewType = null;
+
+
+/* ===== MỞ CAMERA ===== */
+cameraBtn.onclick = () => openCamera();
+
+async function openCamera() {
+    cameraModal.style.display = "flex";
+
+    await startCamera(usingFront);
+}
+
+async function startCamera(isFront) {
+
+    // tắt stream cũ trước
+    if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+
+    const constraints = {
+        video: {
+            facingMode: isFront ? "user" : "environment"
+        },
+        audio: true
+    };
+
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        cameraPreview.srcObject = cameraStream;
+    } catch (err) {
+        alert("Không mở được camera!");
+        console.log(err);
+    }
+}
+
+
+/* ===== NÚT ĐÓNG CAMERA ===== */
+closeCameraBtn.onclick = () => closeCamera();
+
+function closeCamera() {
+    cameraModal.style.display = "none";
+    cameraStream?.getTracks().forEach(t => t.stop());
+}
+
+
+/* ===== NÚT ĐỔI CAMERA ===== */
+switchCameraBtn.onclick = async () => {
+    usingFront = !usingFront;   // đổi trước ↔ sau
+    await startCamera(usingFront);
+};
+
+
+/* =============================================================
+      NHẤN — CHỤP ẢNH | GIỮ — QUAY VIDEO 30s
+============================================================= */
+
+captureButton.onmousedown = () => {
+    pressTimer = setTimeout(() => {
+        startRecording();
+    }, 350); // giữ 0.35 giây để bắt đầu quay
+};
+
+captureButton.onmouseup = () => {
+    clearTimeout(pressTimer);
+
+    if (!isRecording) takePhoto();
+    else stopRecording();
+};
+
+captureButton.onmouseleave = () => {
+    clearTimeout(pressTimer);
+    if (isRecording) stopRecording();
+};
+
+
+/* ===== CHỤP ẢNH ===== */
+function takePhoto() {
+    let canvas = document.createElement("canvas");
+    canvas.width = cameraPreview.videoWidth;
+    canvas.height = cameraPreview.videoHeight;
+
+    canvas.getContext("2d").drawImage(cameraPreview, 0, 0);
+
+    canvas.toBlob(blob => {
+        previewBlob = blob;
+        previewType = "image";
+        closeCamera();
+        openEditor();
+    }, "image/jpeg", 0.9);
+}
+
+
+/* ===== QUAY VIDEO ===== */
+function startRecording() {
+    isRecording = true;
+    captureButton.classList.add("recording");
+
+    chunks = [];
+
+    mediaRecorder = new MediaRecorder(cameraStream);
+
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.start();
+
+    // thanh tiến trình
+    recordProgress.style.transition = "none";
+    recordProgress.style.width = "0%";
+    setTimeout(() => {
+        recordProgress.style.transition = "width 30s linear";
+        recordProgress.style.width = "100%";
+    }, 10);
+
+    setTimeout(() => {
+        if (isRecording) stopRecording();
+    }, 30000);
+}
+
+function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+
+    captureButton.classList.remove("recording");
+    recordProgress.style.width = "0%";
+
+    mediaRecorder.stop();
+
+    mediaRecorder.onstop = () => {
+        let blob = new Blob(chunks, { type: "video/mp4" });
+        previewBlob = blob;
+        previewType = "video";
+
+        closeCamera();
+        openEditor();
+    };
+}
+
+
+/* =============================================================
+      EDITOR — VIẾT CHỮ LÊN ẢNH (GIỐNG ZALO)
+============================================================= */
+
+let baseImg = null;
+let fontSize = 40;
+let textX = 50;
+let textY = 50;
+let isDrag = false;
+let textColor = "#ffffff";
+
+function openEditor() {
+    editorModal.style.display = "flex";
+
+    let ctx = editorCanvas.getContext("2d");
+    let url = URL.createObjectURL(previewBlob);
+
+    if (previewType === "image") {
+        baseImg = new Image();
+        baseImg.onload = () => {
+            editorCanvas.width = baseImg.width;
+            editorCanvas.height = baseImg.height;
+            ctx.drawImage(baseImg, 0, 0);
+            redrawEditor();
+        };
+        baseImg.src = url;
+    } else {
+        // video thì không chỉnh, gửi thẳng
+        editorCanvas.width = 400;
+        editorCanvas.height = 220;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, 400, 220);
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px Arial";
+        ctx.fillText("Video sẽ được gửi ngay", 80, 120);
+    }
+}
+
+
+function redrawEditor() {
+    let ctx = editorCanvas.getContext("2d");
+
+    // xóa toàn bộ canvas
+    ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
+
+    // vẽ ảnh gốc
+    if (baseImg) ctx.drawImage(baseImg, 0, 0);
+
+    let text = editorText.value;
+    if (!text) return;
+
+    ctx.font = `${fontSize}px Arial`;
+
+    // đo kích thước chữ
+    let textWidth = ctx.measureText(text).width;
+    let textHeight = fontSize * 1.3; // padding trên dưới
+
+    // ===== VẼ HỘP TRẮNG SAU CHỮ =====
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.strokeStyle = "rgba(0,0,0,0.15)";
+    ctx.lineWidth = 2;
+
+    let paddingX = 15;
+    let paddingY = 8;
+
+    let boxX = textX - paddingX;
+    let boxY = textY - fontSize - paddingY;
+
+    let boxW = textWidth + paddingX * 2;
+    let boxH = textHeight + paddingY * 2;
+
+    // Bo góc (Zalo style)
+    let radius = 12;
+    ctx.beginPath();
+    ctx.moveTo(boxX + radius, boxY);
+    ctx.lineTo(boxX + boxW - radius, boxY);
+    ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + radius);
+    ctx.lineTo(boxX + boxW, boxY + boxH - radius);
+    ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - radius, boxY + boxH);
+    ctx.lineTo(boxX + radius, boxY + boxH);
+    ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - radius);
+    ctx.lineTo(boxX, boxY + radius);
+    ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+    ctx.closePath();
+    ctx.fill();
+
+    // ===== VẼ CHỮ MÀU ĐEN =====
+    ctx.fillStyle = "#000000";
+    ctx.fillText(text, textX, textY);
+}
+
+
+
+editorCanvas.onmousedown = e => {
+    let rect = editorCanvas.getBoundingClientRect();
+    let mx = e.clientX - rect.left;
+    let my = e.clientY - rect.top;
+
+    let ctx = editorCanvas.getContext("2d");
+    let width = ctx.measureText(editorText.value).width;
+
+    if (mx >= textX && mx <= textX + width &&
+        my >= textY - fontSize && my <= textY) {
+        isDrag = true;
+    }
+};
+
+editorCanvas.onmousemove = e => {
+    if (!isDrag) return;
+
+    let rect = editorCanvas.getBoundingClientRect();
+    textX = e.clientX - rect.left;
+    textY = e.clientY - rect.top;
+
+    redrawEditor();
+};
+
+editorCanvas.onmouseup = () => isDrag = false;
+editorCanvas.onmouseleave = () => isDrag = false;
+
+
+/* ===== INPUT TEXT ===== */
+editorText.oninput = redrawEditor;
+fontUp.onclick = () => { fontSize += 4; redrawEditor(); };
+fontDown.onclick = () => { fontSize = Math.max(12, fontSize - 4); redrawEditor(); };
+colorPick.oninput = e => { textColor = e.target.value; redrawEditor(); };
+
+cancelEdit.onclick = () => {
+    editorModal.style.display = "none";
+};
+
+
+/* ===== GỬI FILE SAU KHI SỬA ===== */
+sendEdit.onclick = async () => {
+    if (!currentRoom) return alert("Chưa chọn phòng!");
+
+    if (previewType === "image") {
+        editorCanvas.toBlob(async (b) => {
+            await sendBlobFile(b, "photo.jpg", "image/jpeg");
+        }, "image/jpeg");
+    } else {
+        await sendBlobFile(previewBlob, "video.mp4", "video/mp4");
+    }
+
+    editorModal.style.display = "none";
+};
+
+
+async function sendBlobFile(blob, fileName, fileType) {
+    let f = new File([blob], fileName, { type: fileType });
+
+    let form = new FormData();
+    form.append("file", f);
+
+    let res = await fetch(`${API_URL}/api/messages/upload`, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        body: form
+    });
+
+    let data = await res.json();
+
+    socket.emit("send_message", {
+        roomId: currentRoom._id,
+        sender: userId,
+        file: data.url,
+        fileType: data.fileType,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        replyTo: replyTarget?._id || null
+    });
+}
+
+
+/******************************************************
+ * STICKER
+ ******************************************************/
+stickerBtn.onclick = () => {
+    stickerPanel.style.display =
+        stickerPanel.style.display === "block" ? "none" : "block";
+
+    loadStickers();
+};
+
+function loadStickers() {
+    stickerPanel.innerHTML = "";
+
+    const gifs = [
+        "https://media.giphy.com/media/ICOgUNjpvO0PC/giphy.gif",
+        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",
+        "https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif",
+        "https://media.giphy.com/media/11e0WQhAIpI2f6/giphy.gif",
+        "https://media.giphy.com/media/ADgfsbHcS62Jy/giphy.gif"
+    ];
+
+    gifs.forEach(url => {
+        let img = document.createElement("img");
+        img.src = url;
+        img.className = "sticker-item";
+        img.onclick = () => sendGif(url);
+        stickerPanel.appendChild(img);
+    });
+}
+
+function sendGif(url) {
+    socket.emit("send_message", {
+        roomId: currentRoom._id,
+        sender: userId,
+        file: url,
+        fileType: "gif",
+        fileName: "sticker.gif",
+        isSticker: true
+    });
+
+    stickerPanel.style.display = "none";
+}
+
+/******************************************************
+ * VIEW IMAGE
+ ******************************************************/
+function openViewer(url) {
+    viewerImg.src = url;
+    imageViewer.style.display = "flex";
+}
+
+imageViewer.onclick = () => {
+    imageViewer.style.display = "none";
+};
+
+/******************************************************
+ * RENDER MESSAGE
+ ******************************************************/
+function addMessage(msg) {
+    let isMe = msg.sender?._id === userId;
+
+    let box = document.createElement("div");
+    box.className = "msg-box " + (isMe ? "msg-me" : "msg-other");
+    box.dataset.id = msg._id;
+
+    let wrap = document.createElement("div");
+
+    // name
+    if (!isMe) {
+        let nameTag = document.createElement("div");
+        nameTag.className = "sender-name";
+        nameTag.innerText = msg.sender?.fullName || "Unknown";
+        wrap.appendChild(nameTag);
+    }
+
+    let bubble = document.createElement("div");
+    bubble.className = "bubble " + (isMe ? "bubble-me" : "bubble-other");
+
+    // reply
+    if (msg.replyTo) {
+        let rp = document.createElement("div");
+        rp.style =
+            "background:#eef;border-left:3px solid #57a9ff;padding:5px;margin-bottom:5px;font-size:12px;";
+        rp.innerText =
+            msg.replyTo.text ||
+            msg.replyTo.fileName ||
+            "[Media]";
+        rp.onclick = () => jumpTo(msg.replyTo._id);
+
+        bubble.appendChild(rp);
+    }
+
+    // text
+    if (msg.text) {
+        let t = document.createElement("div");
+        t.innerText = msg.text;
+        bubble.appendChild(t);
+    }
+
+    // image
+    if (msg.fileType?.startsWith("image")) {
+        let img = document.createElement("img");
+        img.src = msg.file;
+        img.style.maxWidth = "200px";
+        img.style.borderRadius = "10px";
+        img.onclick = () => openViewer(msg.file);
+        bubble.appendChild(img);
+    }
+
+    // video
+    if (msg.fileType?.startsWith("video")) {
+        let vid = document.createElement("video");
+        vid.src = msg.file;
+        vid.controls = true;
+        vid.style.maxWidth = "260px";
+        bubble.appendChild(vid);
+    }
+
+    // gif
+    if (msg.fileType === "gif") {
+        let gif = document.createElement("img");
+        gif.src = msg.file;
+        gif.style.maxWidth = "180px";
+        bubble.appendChild(gif);
+    }
+
+    // attachment
+    if (
+        msg.file &&
+        !msg.fileType?.startsWith("image") &&
+        !msg.fileType?.startsWith("video") &&
+        msg.fileType !== "gif"
+    ) {
+        let att = document.createElement("div");
+        att.style =
+            "background:#eef;padding:8px;border-radius:8px;cursor:pointer;margin-top:5px;";
+        att.innerHTML = "📄 " + msg.fileName;
+
+        att.onclick = () => window.open(msg.file, "_blank");
+        bubble.appendChild(att);
+    }
+
+    wrap.appendChild(bubble);
+
+    let rBox = document.createElement("div");
+    rBox.className = "reaction-box";
+
+    wrap.appendChild(rBox);
+
+    if (msg.reactions)
+        renderReactions(msg.reactions, rBox);
+
+    box.appendChild(wrap);
+
+    // long press
+    box.onmousedown = () => {
+        pressTimer = setTimeout(() => openReactionMenu(box, msg), 420);
+    };
+    box.onmouseup = () => clearTimeout(pressTimer);
+    box.onmouseleave = () => clearTimeout(pressTimer);
+
+    messages.appendChild(box);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+/******************************************************
+ * REACTION MENU
+ ******************************************************/
+const EMOJI = ["👍","❤️","😂","😮","😢","😡"];
+
+function openReactionMenu(box, msg) {
+    document.querySelector(".reaction-menu")?.remove();
+
+    let menu = document.createElement("div");
+    menu.className = "reaction-menu";
+
+    EMOJI.forEach(e => {
+        let sp = document.createElement("span");
+        sp.innerText = e;
+        sp.onclick = () => {
+            socket.emit("react_message", {
+                messageId: msg._id,
+                emoji: e,
+                roomId: currentRoom._id,
+                user: userId
+            });
+            menu.remove();
+        };
+        menu.appendChild(sp);
+    });
+
+    // reply button
+    let rep = document.createElement("span");
+    rep.innerText = "💬";
+    rep.onclick = () => {
+        replyTarget = msg;
+        replyBar.innerText =
+            msg.text || msg.fileName || "[Media]";
+        replyBar.style.display = "block";
+
+        menu.remove();
+    };
+    menu.appendChild(rep);
+
+    let r = box.getBoundingClientRect();
+    menu.style.top = r.top - 45 + "px";
+    menu.style.left = r.left + "px";
+
+    document.body.appendChild(menu);
+}
+
+/******************************************************
+ * SHOW REACTIONS
+ ******************************************************/
+function renderReactions(arr, box) {
+    box.innerHTML = "";
+
+    let count = {};
+    arr.forEach(r => {
+        count[r.emoji] = (count[r.emoji] || 0) + 1;
+    });
+
+    Object.keys(count).forEach(k => {
+        let el = document.createElement("div");
+        el.className = "reaction-item";
+        el.innerText = `${k} ${count[k]}`;
+        box.appendChild(el);
+    });
+}
+
+/******************************************************
+ * JUMP TO REPLY
+ ******************************************************/
+function jumpTo(id) {
+    let el = document.querySelector(`.msg-box[data-id="${id}"]`);
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    el.style.background = "yellow";
+    setTimeout(() => (el.style.background = "none"), 1500);
+}
+createRoomBtn.onclick = () => {
+    window.location.href = "create-room.html";
+};
+adminBtn.onclick = () => {
+    window.location.href = "admin.html";
+};
+/******************************************************
+ * SEARCH USER (PRIVATE CHAT)
+ ******************************************************/
+searchUserInput.oninput = async () => {
+    let keyword = searchUserInput.value.trim();
+
+    if (!keyword) {
+        searchResult.innerHTML = "";
+        return;
+    }
+
+    let res = await fetch(`${API_URL}/api/accounts/search?q=${keyword}`, {
+        headers: { Authorization: "Bearer " + token }
+    });
+
+    let data = await res.json();
+
+    // Nếu API trả về { users: [...] }
+    let list = data.users || [];
+
+    searchResult.innerHTML = "";
+
+    if (list.length === 0) {
+        searchResult.innerHTML = `<div style="padding:10px;color:#777;">Không có kết quả</div>`;
+        return;
+    }
+
+    list.forEach(u => {
+        if (u._id === userId) return; // bỏ chính mình
+
+        let box = document.createElement("div");
+        box.className = "search-item";
+
+        box.innerHTML = `
+            <b>${u.fullName}</b><br>
+            <small>${u.username}</small>
+        `;
+
+        box.onclick = () => startPrivateChat(u._id);
+
+        searchResult.appendChild(box);
+    });
+};
+
+/******************************************************
+ * START PRIVATE CHAT (TẠO HOẶC LẤY PHÒNG RIÊNG)
+ ******************************************************/
+async function startPrivateChat(otherUserId) {
+
+    try {
+        let res = await fetch(`${API_URL}/api/rooms/private`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ userId: otherUserId })
+        });
+
+        let data = await res.json();
+
+        if (!res.ok) {
+            alert(data.message || "Lỗi mở chat riêng");
+            return;
+        }
+
+        // 👉 Phòng riêng đã tồn tại hoặc tạo mới → openRoom
+        openRoom(data.room);
+
+        // Xóa kết quả tìm kiếm
+        searchUserInput.value = "";
+        searchResult.innerHTML = "";
+
+    } catch (err) {
+        console.log("Private chat error:", err);
+    }
+}
+
+
+</script>
+
+</body>
+</html>

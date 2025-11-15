@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Admin Mobile</title>
+<style>
+    *{ margin:0; padding:0; box-sizing:border-box; font-family:"Segoe UI", sans-serif; }
+    body{ background:#f5f7fb; }
+
+    /******** HEADER ********/
+    #topbar{
+        position:fixed; top:0; left:0; right:0;
+        background:#1e88e5;
+        padding:16px;
+        color:white;
+        font-size:20px;
+        font-weight:600;
+        text-align:center;
+        box-shadow:0 2px 10px rgba(0,0,0,0.15);
+        z-index:20;
+    }
+    #backChat{
+        position:absolute; left:15px; top:16px;
+        background:white; color:#1e88e5;
+        padding:6px 12px;
+        border-radius:6px;
+        font-size:13px;
+        font-weight:600;
+        cursor:pointer;
+    }
+
+    /******** CONTENT ********/
+    #contentArea{ padding:85px 15px 90px; }
+    .section-title{
+        display:flex;
+        justify-content:space-between;
+        font-size:18px;
+        font-weight:600;
+        margin-bottom:12px;
+        color:#1e88e5;
+    }
+    .add-btn{
+        background:#43a047;
+        color:white;
+        padding:6px 10px;
+        font-size:14px;
+        border-radius:6px;
+        cursor:pointer;
+    }
+
+    /******** CARD ********/
+    .card{
+        background:white;
+        border-radius:12px;
+        padding:15px;
+        margin-bottom:12px;
+        box-shadow:0 2px 10px rgba(0,0,0,0.05);
+    }
+    .user-info{ font-size:15px; margin-bottom:12px; }
+
+    .card-actions button{
+        padding:8px 12px;
+        border:none;
+        border-radius:8px;
+        color:white;
+        font-size:14px;
+        margin-right:6px;
+        cursor:pointer;
+    }
+    .btn-edit{ background:#43a047; }
+    .btn-role{ background:#ff9800; }
+    .btn-delete{ background:#e53935; }
+
+    /******** MENU ********/
+    #bottomMenu{
+        position:fixed; bottom:0; left:0; right:0;
+        height:60px;
+        background:white;
+        display:flex;
+        justify-content:space-around;
+        align-items:center;
+        box-shadow:0 -2px 10px rgba(0,0,0,0.1);
+        z-index:30;
+    }
+    .menu-btn{
+        flex:1; text-align:center; font-size:15px;
+        color:#777; cursor:pointer;
+    }
+    .menu-btn-active{ color:#1e88e5; font-weight:600; }
+
+    /******** MODAL ********/
+    #modalOverlay{
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.5);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        z-index:1000;
+    }
+    #modalBox{
+        width:90%; max-width:360px;
+        background:white;
+        padding:20px;
+        border-radius:12px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.2);
+        animation:fade .25s ease;
+    }
+    @keyframes fade{ from{opacity:0; transform:scale(.95);} to{opacity:1;} }
+
+    .input{
+        width:100%; padding:12px;
+        margin-top:10px; border-radius:8px;
+        border:1px solid #ccc; font-size:15px;
+    }
+    .modal-btn{
+        padding:10px 16px;
+        border:none;
+        border-radius:8px;
+        color:white;
+        cursor:pointer;
+        font-size:15px;
+    }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <span id="backChat" onclick="goChat()">⬅</span>
+    Admin Panel
+</div>
+
+<div id="contentArea">
+
+    <!-- USERS -->
+    <div id="usersSection">
+        <div class="section-title">
+            👤 Tài khoản
+            <span class="add-btn" onclick="openModal()">➕</span>
+        </div>
+        <div id="userListMobile"></div>
+    </div>
+
+    <!-- ROOMS -->
+    <div id="roomsSection" style="display:none;">
+        <div class="section-title">💬 Phòng chat</div>
+        <div id="roomListMobile"></div>
+    </div>
+
+</div>
+
+<div id="bottomMenu">
+    <div class="menu-btn menu-btn-active" onclick="switchTab('users')">Tài khoản</div>
+    <div class="menu-btn" onclick="switchTab('rooms')">Phòng</div>
+    <div class="menu-btn" onclick="logout()">Đăng xuất</div>
+</div>
+
+<!-- MODAL -->
+<div id="modalOverlay">
+    <div id="modalBox">
+        <h3 style="text-align:center;color:#1e88e5;margin-bottom:10px;">➕ Tạo tài khoản</h3>
+
+        <input id="mFullname" class="input" placeholder="Họ tên">
+        <input id="mUsername" class="input" placeholder="Username">
+        <input id="mPassword" type="password" class="input" placeholder="Mật khẩu">
+
+        <select id="mRole" class="input">
+            <option value="user">Người dùng</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <div style="text-align:center; margin-top:16px;">
+            <button class="modal-btn" style="background:#999" onclick="closeModal()">Hủy</button>
+            <button class="modal-btn" style="background:#1e88e5; margin-left:10px;" onclick="submitCreate()">Tạo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = "http://localhost:3000/api";
+let token = localStorage.getItem("token");
+
+function decodeJWT(t){
+    try{ return JSON.parse(atob(t.split(".")[1])); }
+    catch(e){ return null; }
+}
+let user = decodeJWT(token);
+if(!user || user.role !== "admin"){
+    alert("Bạn không phải admin!");
+    location.href="chat.html";
+}
+
+function goChat(){ location.href="chat.html"; }
+
+function switchTab(tab){
+    usersSection.style.display = tab === "users" ? "block" : "none";
+    roomsSection.style.display = tab === "rooms" ? "block" : "none";
+
+    document.querySelectorAll(".menu-btn").forEach(b=>b.classList.remove("menu-btn-active"));
+    document.querySelectorAll(".menu-btn")[ tab === "users" ? 0 : 1 ].classList.add("menu-btn-active");
+}
+
+function logout(){ localStorage.clear(); location.href = "login.html"; }
+
+async function loadUsers(){
+    let res = await fetch(`${API_URL}/accounts/`,{ headers:{ "Authorization":"Bearer "+token } });
+    let users = await res.json();
+
+    userListMobile.innerHTML = "";
+    users.forEach(u=>{
+        userListMobile.innerHTML += `
+            <div class="card">
+                <div class="user-info"><b>${u.fullName}</b><br>
+                👤 ${u.username} — <b>${u.role}</b></div>
+
+                <div class="card-actions">
+                    <button class="btn-edit" onclick="resetPassword('${u._id}')">Mật khẩu</button>
+                    <button class="btn-role" onclick="changeRole('${u._id}','${u.role}')">Role</button>
+                    <button class="btn-delete" onclick="deleteUser('${u._id}')">Xóa</button>
+                </div>
+            </div>`;
+    });
+}
+
+async function resetPassword(id){
+    let pw = prompt("Nhập mật khẩu mới:");
+    if(!pw) return;
+
+    await fetch(`${API_URL}/accounts/${id}`,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({ password:pw })
+    });
+
+    alert("Đổi mật khẩu thành công!");
+}
+
+async function changeRole(id,current){
+    let newRole = current === "admin" ? "user" : "admin";
+
+    let res = await fetch(`${API_URL}/accounts/${id}/role`,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({ role:newRole })
+    });
+
+    let data = await res.json();
+    alert(data.message);
+    loadUsers();
+}
+
+async function deleteUser(id){
+    if(!confirm("Xóa tài khoản này?")) return;
+
+    await fetch(`${API_URL}/accounts/${id}`,{
+        method:"DELETE",
+        headers:{"Authorization":"Bearer "+token}
+    });
+
+    alert("Đã xóa!");
+    loadUsers();
+}
+
+async function loadRooms(){
+    let res = await fetch(`${API_URL}/rooms/my-rooms`,{
+        headers:{"Authorization":"Bearer "+token}
+    });
+
+    let data = await res.json();
+    roomListMobile.innerHTML = "";
+
+    data.rooms.forEach(r=>{
+        roomListMobile.innerHTML += `
+            <div class="card">
+                <b>${r.name}</b><br><br>
+                👥 Thành viên: ${r.members.map(m=>m.fullName).join(", ")}<br>
+                ⭐ Admin: ${r.admins.map(m=>m.fullName).join(", ")}<br><br>
+
+                <div class="card-actions">
+                    <button class="btn-role" onclick="addAdmin('${r._id}')">Admin</button>
+                    <button class="btn-edit" onclick="kickMember('${r._id}')">Kick</button>
+                    <button class="btn-delete" onclick="deleteRoom('${r._id}')">Xóa</button>
+                </div>
+            </div>`;
+    });
+}
+
+async function addAdmin(roomId){
+    let userId = prompt("Nhập ID:");
+    if(!userId) return;
+
+    await fetch(`${API_URL}/rooms/${roomId}/add-admin`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({ userId })
+    });
+
+    alert("Thêm admin thành công!");
+    loadRooms();
+}
+
+async function kickMember(roomId){
+    let userId = prompt("Nhập ID cần kick:");
+    if(!userId) return;
+
+    await fetch(`${API_URL}/rooms/${roomId}/kick-member`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({ userId })
+    });
+
+    alert("Kick thành viên thành công!");
+    loadRooms();
+}
+
+async function deleteRoom(roomId){
+    if(!confirm("Xóa phòng này?")) return;
+
+    await fetch(`${API_URL}/rooms/${roomId}`,{
+        method:"DELETE",
+        headers:{"Authorization":"Bearer "+token}
+    });
+
+    alert("Đã xóa phòng!");
+    loadRooms();
+}
+
+function openModal(){ modalOverlay.style.display = "flex"; }
+function closeModal(){ modalOverlay.style.display = "none"; }
+
+async function submitCreate(){
+    let full = mFullname.value.trim();
+    let user = mUsername.value.trim();
+    let pass = mPassword.value.trim();
+    let role = mRole.value;
+
+    if(!full || !user || !pass){ alert("Vui lòng nhập đầy đủ!"); return; }
+
+    let res = await fetch(`${API_URL}/accounts/register`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({ fullName:full, username:user, password:pass, role })
+    });
+
+    let data = await res.json();
+
+    if(!res.ok){ alert(data.message || "Không thể tạo tài khoản!"); return; }
+
+    alert("Tạo tài khoản thành công!");
+    closeModal();
+    loadUsers();
+}
+
+loadUsers();
+loadRooms();
+</script>
+
+</body>
+</html>
